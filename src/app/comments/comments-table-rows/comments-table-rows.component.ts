@@ -22,8 +22,8 @@ export class CommentsTableRowsComponent implements OnInit {
 
   ngOnInit() {
 
-    this.comments = this.data.data;
-    this.paginationData = this.data.paginationData;
+    // this.comments = this.data.data;
+    // this.paginationData = this.data.paginationData;
 
     // Populate the documents for this item.
     this.comments.map(async comment => {

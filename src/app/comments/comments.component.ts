@@ -6,15 +6,15 @@ import { MatSnackBar } from '@angular/material';
 import { CommentPeriod } from 'app/models/commentperiod';
 import { Comment } from 'app/models/comment';
 
-import { CommentService } from 'app/services/comment.service';
+// import { CommentService } from 'app/services/comment.service';
 import { AddCommentComponent } from './add-comment/add-comment.component';
 import { Project } from 'app/models/project';
 import { DocumentService } from 'app/services/document.service';
 import { ApiService } from 'app/services/api';
-import { TableParamsObject } from 'app/shared/components/table-template/table-params-object';
+// import { TableParamsObject } from 'app/shared/components/table-template/table-params-object';
 import { TableObject } from 'app/shared/components/table-template/table-object';
-import { TableTemplateUtils } from 'app/shared/utils/table-template-utils';
-import { CommentsTableRowsComponent } from 'app/comments/comments-table-rows/comments-table-rows.component';
+// import { TableTemplateUtils } from 'app/shared/utils/table-template-utils';
+// import { CommentsTableRowsComponent } from 'app/comments/comments-table-rows/comments-table-rows.component';
 
 @Component({
   selector: 'app-comments',
@@ -37,7 +37,7 @@ export class CommentsComponent implements OnInit, OnDestroy {
   private commentPeriodId = null;
   private ngbModal: NgbModalRef = null;
 
-  public tableParams: TableParamsObject = new TableParamsObject();
+  // public tableParams: TableParamsObject = new TableParamsObject();
   public commentTableColumns = [];
 
   public type = 'PROJECT';
@@ -46,19 +46,19 @@ export class CommentsComponent implements OnInit, OnDestroy {
     public snackBar: MatSnackBar,
     private api: ApiService,
     private route: ActivatedRoute,
-    private commentService: CommentService,
+    // private commentService: CommentService,
     private documentService: DocumentService,
     private _changeDetectionRef: ChangeDetectorRef,
     private modalService: NgbModal,
     private router: Router,
-    private tableTemplateUtils: TableTemplateUtils
+    // private tableTemplateUtils: TableTemplateUtils
   ) { }
 
   ngOnInit() {
     // Get page size and current page from url
-    this.route.params.subscribe(params => {
-      this.tableParams = this.tableTemplateUtils.getParamsFromUrl(params);
-    });
+    // this.route.params.subscribe(params => {
+    //   this.tableParams = this.tableTemplateUtils.getParamsFromUrl(params);
+    // });
 
     // get data from route resolver
     this.route.data
@@ -94,24 +94,24 @@ export class CommentsComponent implements OnInit, OnDestroy {
                 });
             }
             this.commentPeriodId = this.commentPeriod._id;
-            this.commentService.getByPeriodId(this.commentPeriodId, this.tableParams.currentPage, this.tableParams.pageSize, true)
-              .takeUntil(this.ngUnsubscribe)
-              .subscribe((res: any) => {
-                this.comments = res.currentComments;
-                this.tableParams.totalListItems = res.totalCount;
-                this.commentTableColumns = [
-                  {
-                    name: `Showing ${this.comments.length} comments out of ${this.tableParams.totalListItems}:`,
-                    value: 'comment',
-                    width: 'no-sort',
-                    nosort: true
-                  },
-                ];
-                this.setCommentRowData();
+            // this.commentService.getByPeriodId(this.commentPeriodId, this.tableParams.currentPage, this.tableParams.pageSize, true)
+            //   .takeUntil(this.ngUnsubscribe)
+            //   .subscribe((res: any) => {
+            //     this.comments = res.currentComments;
+            //     this.tableParams.totalListItems = res.totalCount;
+            //     this.commentTableColumns = [
+            //       {
+            //         name: `Showing ${this.comments.length} comments out of ${this.tableParams.totalListItems}:`,
+            //         value: 'comment',
+            //         width: 'no-sort',
+            //         nosort: true
+            //       },
+            //     ];
+            //     this.setCommentRowData();
 
-                this.loading = false;
-                this._changeDetectionRef.detectChanges();
-              });
+            //     this.loading = false;
+            //     this._changeDetectionRef.detectChanges();
+            //   });
 
           } else {
             alert('Uh-oh, couldn\'t load comment period');
@@ -124,21 +124,21 @@ export class CommentsComponent implements OnInit, OnDestroy {
 
 
   setCommentRowData() {
-    this.commentTableData = new TableObject(
-      CommentsTableRowsComponent,
-      this.comments,
-      this.tableParams
-    );
+    // this.commentTableData = new TableObject(
+    //   CommentsTableRowsComponent,
+    //   this.comments,
+    //   this.tableParams
+    // );
   }
 
-  setColumnSort(column) {
-    if (this.tableParams.sortBy.charAt(0) === '+') {
-      this.tableParams.sortBy = '-' + column;
-    } else {
-      this.tableParams.sortBy = '+' + column;
-    }
-    this.getPaginatedComments(this.tableParams.currentPage);
-  }
+  // setColumnSort(column) {
+  //   if (this.tableParams.sortBy.charAt(0) === '+') {
+  //     this.tableParams.sortBy = '-' + column;
+  //   } else {
+  //     this.tableParams.sortBy = '+' + column;
+  //   }
+  //   this.getPaginatedComments(this.tableParams.currentPage);
+  // }
 
   public downloadDocument(document) {
     this.loadingDoc = true;
@@ -186,24 +186,24 @@ export class CommentsComponent implements OnInit, OnDestroy {
     }
   }
 
-  getPaginatedComments(pageNumber) {
-    // Go to top of page after clicking to a different page.
-    // window.scrollTo(0, 0);
-    this.loading = true;
+  // getPaginatedComments(pageNumber) {
+  //   // Go to top of page after clicking to a different page.
+  //   // window.scrollTo(0, 0);
+  //   this.loading = true;
 
-    this.tableParams = this.tableTemplateUtils.updateTableParams(this.tableParams, pageNumber, this.tableParams.sortBy);
+  //   this.tableParams = this.tableTemplateUtils.updateTableParams(this.tableParams, pageNumber, this.tableParams.sortBy);
 
-    this.commentService.getByPeriodId(this.commentPeriodId, this.tableParams.currentPage, this.tableParams.pageSize, true)
-      .takeUntil(this.ngUnsubscribe)
-      .subscribe((res: any) => {
-        this.tableParams.totalListItems = res.totalCount;
-        this.comments = res.currentComments;
-        this.tableTemplateUtils.updateUrl(this.tableParams.sortBy, this.tableParams.currentPage, this.tableParams.pageSize);
-        this.setCommentRowData();
-        this.loading = false;
-        this._changeDetectionRef.detectChanges();
-      });
-  }
+  //   this.commentService.getByPeriodId(this.commentPeriodId, this.tableParams.currentPage, this.tableParams.pageSize, true)
+  //     .takeUntil(this.ngUnsubscribe)
+  //     .subscribe((res: any) => {
+  //       this.tableParams.totalListItems = res.totalCount;
+  //       this.comments = res.currentComments;
+  //       this.tableTemplateUtils.updateUrl(this.tableParams.sortBy, this.tableParams.currentPage, this.tableParams.pageSize);
+  //       this.setCommentRowData();
+  //       this.loading = false;
+  //       this._changeDetectionRef.detectChanges();
+  //     });
+  // }
 
   ngOnDestroy() {
     this.ngUnsubscribe.next();

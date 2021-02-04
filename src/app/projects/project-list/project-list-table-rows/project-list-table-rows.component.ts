@@ -1,6 +1,6 @@
 import { Component, Input, OnInit } from '@angular/core';
 
-import { TableComponent } from 'app/shared/components/table-template/table.component';
+// import { TableComponent } from 'app/shared/components/table-template/table.component';
 import { TableObject } from 'app/shared/components/table-template/table-object';
 import { Router } from '@angular/router';
 
@@ -10,7 +10,7 @@ import { Router } from '@angular/router';
     styleUrls: ['./project-list-table-rows.component.scss']
 })
 
-export class ProjectListTableRowsComponent implements OnInit, TableComponent {
+export class ProjectListTableRowsComponent implements OnInit {
     @Input() data: TableObject;
 
     public projects: any;
@@ -21,8 +21,8 @@ export class ProjectListTableRowsComponent implements OnInit, TableComponent {
     ) { }
 
     ngOnInit() {
-        this.projects = this.data.data;
-        this.paginationData = this.data.paginationData;
+        // this.projects = this.data.data;
+        // this.paginationData = this.data.paginationData;
     }
 
     goToProject(project) {

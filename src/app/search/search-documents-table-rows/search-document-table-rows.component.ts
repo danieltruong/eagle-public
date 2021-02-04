@@ -1,6 +1,6 @@
 import { Component, Input, Output, OnInit, OnDestroy, EventEmitter, ChangeDetectorRef } from '@angular/core';
 import { Subject } from 'rxjs';
-import { TableComponent } from 'app/shared/components/table-template/table.component';
+// import { TableComponent } from 'app/shared/components/table-template/table.component';
 import { TableObject } from 'app/shared/components/table-template/table-object';
 import { ActivatedRoute } from '@angular/router';
 import { Utils } from 'app/shared/utils/utils';
@@ -12,7 +12,7 @@ import { MatSnackBarRef, SimpleSnackBar, MatSnackBar } from '@angular/material';
   styleUrls: ['./search-document-table-rows.component.scss']
 })
 
-export class DocSearchTableRowsComponent implements OnInit, OnDestroy, TableComponent {
+export class DocSearchTableRowsComponent implements OnInit, OnDestroy {
   @Input() data: TableObject;
   @Output() selectedCount: EventEmitter<any> = new EventEmitter();
 
@@ -33,11 +33,11 @@ export class DocSearchTableRowsComponent implements OnInit, OnDestroy, TableComp
   ) { }
 
   ngOnInit() {
-    this.documents = this.data.data;
-    this.paginationData = this.data.paginationData;
-    if (this.data.extraData) {
-      this.showFeatured = this.data.extraData.showFeatured;
-    }
+    // this.documents = this.data.data;
+    // this.paginationData = this.data.paginationData;
+    // if (this.data.extraData) {
+    //   this.showFeatured = this.data.extraData.showFeatured;
+    // }
 
     this.route.data
       .takeUntil(this.ngUnsubscribe)

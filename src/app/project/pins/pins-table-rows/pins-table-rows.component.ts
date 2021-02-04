@@ -1,6 +1,6 @@
 import { Component, Input, Output, OnInit, EventEmitter } from '@angular/core';
 
-import { TableComponent } from 'app/shared/components/table-template/table.component';
+// import { TableComponent } from 'app/shared/components/table-template/table.component';
 import { TableObject } from 'app/shared/components/table-template/table-object';
 
 @Component({
@@ -9,7 +9,7 @@ import { TableObject } from 'app/shared/components/table-template/table-object';
   styleUrls: ['./pins-table-rows.component.scss']
 })
 
-export class PinsTableRowsComponent implements OnInit, TableComponent {
+export class PinsTableRowsComponent implements OnInit {
   @Input() data: TableObject;
   @Output() selectedCount: EventEmitter<any> = new EventEmitter();
 
@@ -20,8 +20,8 @@ export class PinsTableRowsComponent implements OnInit, TableComponent {
   ) { }
 
   ngOnInit() {
-    this.contacts = this.data.data;
-    this.paginationData = this.data.paginationData;
+    // this.contacts = this.data.data;
+    // this.paginationData = this.data.paginationData;
   }
 
   selectItem(item) {

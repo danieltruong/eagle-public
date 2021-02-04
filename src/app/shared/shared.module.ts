@@ -12,13 +12,9 @@ import { ObjectFilterPipe } from 'app/shared/pipes/object-filter.pipe';
 import { VarDirective } from 'app/shared/utils/ng-var.directive';
 import { DragMoveDirective } from 'app/shared/utils/drag-move.directive';
 
-import { TableTemplateComponent } from 'app/shared/components/table-template/table-template.component';
 import { ListConverterPipe } from './pipes/list-converter.pipe';
 import { SafeHtmlPipe } from './pipes/safe-html-converter.pipe';
 import { OrgNamePipe } from './pipes/org-name.pipe';
-import { TableTemplateUtils } from './utils/table-template-utils';
-import { TableDirective } from './components/table-template/table.directive';
-import { TableTemplateModule } from './components/table-template/table-template.modules'
 import { PublishedPipe } from 'app/shared/pipes/published.pipe';
 import { Utils } from './utils/utils';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
@@ -27,6 +23,13 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { TableTemplateComponent } from './components/table-template/table-template.component';
+import { PageSizePickerComponent } from './components/page-size-picker/page-size-picker.component';
+import { PageCountDisplayComponent } from './components/page-count-display/page-count-display.component';
+import { InjectComponentService } from './services/inject-component.service';
+import { TableRowDirective } from './components/table-template/table-row.directive';
+import { TableTemplateUtils } from './components/table-template/table-template-utils';
+import { NgxPaginationModule } from 'ngx-pagination';
 
 @NgModule({
   imports: [
@@ -39,9 +42,9 @@ import { RouterModule } from '@angular/router';
     NgxTextOverflowClampModule,
     BrowserAnimationsModule,
     NgZorroAntdModule,
-    TableTemplateModule,
     RouterModule,
-    NgbModule
+    NgbModule,
+    NgxPaginationModule
   ],
   declarations: [
     OrderByPipe,
@@ -50,11 +53,14 @@ import { RouterModule } from '@angular/router';
     PublishedPipe,
     VarDirective,
     DragMoveDirective,
-    TableTemplateComponent,
-    TableDirective,
     ListConverterPipe,
     SafeHtmlPipe,
-    OrgNamePipe
+    OrgNamePipe,
+
+    TableTemplateComponent,
+    TableRowDirective,
+    PageSizePickerComponent,
+    PageCountDisplayComponent
   ],
   exports: [
     BrowserModule,
@@ -67,13 +73,18 @@ import { RouterModule } from '@angular/router';
     PublishedPipe,
     VarDirective,
     DragMoveDirective,
-    TableTemplateComponent,
     ListConverterPipe,
     SafeHtmlPipe,
-    OrgNamePipe
+    OrgNamePipe,
+
+    TableTemplateComponent,
+    TableRowDirective,
+    PageSizePickerComponent,
+    PageCountDisplayComponent
   ],
   providers: [
     TableTemplateUtils,
+    InjectComponentService,
     Utils,
     { provide: NZ_I18N, useValue: en_US }
   ]

@@ -1,6 +1,6 @@
 import { Component, Input, Output, OnInit, OnDestroy, EventEmitter, ChangeDetectorRef } from '@angular/core';
 import { Subject } from 'rxjs';
-import { TableComponent } from 'app/shared/components/table-template/table.component';
+// import { TableComponent } from 'app/shared/components/table-template/table.component';
 import { TableObject } from 'app/shared/components/table-template/table-object';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Utils } from 'app/shared/utils/utils';
@@ -11,7 +11,7 @@ import { Utils } from 'app/shared/utils/utils';
   styleUrls: ['./project-document-table-rows.component.scss']
 })
 
-export class DocumentTableRowsComponent implements OnInit, OnDestroy, TableComponent {
+export class DocumentTableRowsComponent implements OnInit, OnDestroy {
   private ngUnsubscribe: Subject<boolean> = new Subject<boolean>();
   @Input() data: TableObject;
   @Output() selectedCount: EventEmitter<any> = new EventEmitter();
@@ -34,11 +34,11 @@ export class DocumentTableRowsComponent implements OnInit, OnDestroy, TableCompo
    }
 
   ngOnInit() {
-    this.documents = this.data.data;
-    this.paginationData = this.data.paginationData;
-    if (this.data.extraData) {
-      this.showFeatured = this.data.extraData.showFeatured;
-    }
+    // this.documents = this.data.data;
+    // this.paginationData = this.data.paginationData;
+    // if (this.data.extraData) {
+    //   this.showFeatured = this.data.extraData.showFeatured;
+    // }
 
     this.route.data
       .takeUntil(this.ngUnsubscribe)

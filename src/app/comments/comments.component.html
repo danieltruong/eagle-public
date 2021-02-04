@@ -95,9 +95,9 @@
 </div>
 <div *ngIf="!loading" class="container comments mt-3">
   <div *ngIf="tableParams.totalListItems > 0">
-    <app-table-template [columns]="commentTableColumns" [data]="commentTableData" (onColumnSort)='setColumnSort($event)'
+    <!-- <app-table-template [columns]="commentTableColumns" [data]="commentTableData" (onColumnSort)='setColumnSort($event)'
       (onPageNumUpdate)='getPaginatedComments($event)'>
-    </app-table-template>
+    </app-table-template> -->
   </div>
   <div *ngIf="tableParams.totalListItems == 0">
     There are no comments.
