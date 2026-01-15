@@ -1,0 +1,33 @@
+#!/bin/bash
+# S2I assemble script for Angular 21 with Yarn
+# This script runs during the OpenShift S2I build process
+
+set -e
+
+echo "---> Installing application source..."
+cp -Rf /tmp/src/. ./
+
+echo "---> Checking for Yarn lock file..."
+if [ -f "yarn.lock" ]; then
+    echo "---> Found yarn.lock, using Yarn for installation"
+    
+    # Restore artifacts from previous build (if any)
+    if [ -d /tmp/artifacts/node_modules ]; then
+        echo "---> Restoring node_modules from cache..."
+        mv /tmp/artifacts/node_modules ./node_modules
+    fi
+    
+    echo "---> Installing dependencies with Yarn..."
+    yarn install --immutable
+    
+    echo "---> Building Angular application..."
+    yarn run build
+else
+    echo "---> No yarn.lock found, falling back to npm"
+    npm install
+    npm run build
+fi
+
+echo "---> Build completed successfully!"
+echo "---> Output directory contents:"
+ls -la dist/eagle-public/browser/ || echo "Warning: Expected output directory not found"

@@ -1,0 +1,4 @@
+#!/bin/bash
+# S2I assemble script - placeholder for nginx runtime
+# The actual Angular build happens in the angular-builder image
+echo "Assemble script - no action needed for nginx runtime"

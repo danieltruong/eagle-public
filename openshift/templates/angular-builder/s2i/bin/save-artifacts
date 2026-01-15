@@ -1,0 +1,12 @@
+#!/bin/bash
+# Save build artifacts for incremental builds
+# This caches node_modules to speed up subsequent builds
+
+echo "Starting save artifacts..."
+
+pushd ${HOME}
+if [ -d node_modules ]; then
+    echo "Saving node_modules..."
+    tar cf - node_modules
+fi
+popd

@@ -1,0 +1,102 @@
+.active-flag,
+.inactive-flag {
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px 4px;
+  border-radius: 5px;
+  font-size: 0.8rem;
+}
+
+.active-flag {
+  background: #5bb75c;
+}
+
+.inactive-flag {
+  background: #d32f2f;
+}
+
+h4 {
+  color: var(--bc-blue);
+  font-weight: bold;
+}
+
+.view-pcp-btn {
+  background: var(--bc-blue);
+  color: white;
+}
+
+.view-pcp-btn:hover {
+  color: white;
+}
+
+.pcp-indicator {
+  background: #f7f8fa;
+  border-radius: 16px;
+  border: 2px solid #f7f8fa;
+  height: 16px;
+  width: 16px;
+  display: inline-block;
+  margin-right: 10px;
+}
+
+.pcp-indicator-active {
+  background: #07a209d1;
+}
+
+.pcp-indicator-inactive {
+  background: #d20e0ebf;
+}
+
+.pcp-indicator-pending {
+  background: var(--bs-warning);
+}
+
+.pn-info-block {
+  padding: 10px 10px 10px 15px;
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+
+.pn-info-block p,
+.pn-info-block a {
+  font-size: medium;
+  line-height: 1.8;
+}
+
+label {
+  font-weight: bold;
+  color: var(--bc-blue);
+  margin-bottom: 0;
+  line-height: 1.2;
+}
+
+.value {
+  font-size: 1rem;
+  line-height: 1.25;
+  margin-bottom: 5px;
+  margin-top: 5px;
+}
+
+.pn-decision {
+  background: #5475a7;
+  border-radius: 4px;
+  padding: 8px 16px;
+  margin: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.pn-decision p,
+.pn-decision a {
+  color: white;
+  border-radius: 2px;
+}
+
+.pn-decision .value {
+  padding: 0;
+  margin: 0;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
