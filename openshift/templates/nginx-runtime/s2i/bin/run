@@ -9,14 +9,9 @@ if [ -f /tmp/nginx.conf.template ]; then
         /tmp/nginx.conf.template > /etc/nginx/nginx.conf
 fi
 
-# Set ANALYTICS_API_URL based on environment if not explicitly set
-if [ -z "$ANALYTICS_API_URL" ]; then
-    case "$DEPLOYMENT_ENVIRONMENT" in
-        prod) ANALYTICS_API_URL="https://penguin-analytics-api-6cdc9e-prod.apps.silver.devops.gov.bc.ca" ;;
-        test) ANALYTICS_API_URL="https://penguin-analytics-api-6cdc9e-test.apps.silver.devops.gov.bc.ca" ;;
-        *)    ANALYTICS_API_URL="https://penguin-analytics-api-6cdc9e-dev.apps.silver.devops.gov.bc.ca" ;;
-    esac
-fi
+# Set ANALYTICS_API_URL - use nginx reverse proxy (defined in default.conf)
+# The reverse proxy forwards /api/analytics to the penguin-analytics-api service
+ANALYTICS_API_URL="/api/analytics"
 
 # Set ANALYTICS_DEBUG based on environment (enabled for non-prod)
 if [ -z "$ANALYTICS_DEBUG" ]; then
