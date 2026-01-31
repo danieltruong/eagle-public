@@ -13,7 +13,7 @@ env:
 
 jobs:
   build:
-    name: Build
+    name: Build and Deploy
     runs-on: ubuntu-24.04
     outputs:
       SHORT_SHA: ${{ steps.short-sha.outputs.SHA }}
@@ -23,18 +23,9 @@ jobs:
         with:
           fetch-depth: 2  # Need at least 2 commits to compare changes
 
-      - name: Use Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24.x"
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Angular Build
-        run: |
-          yarn install --immutable
-          yarn run build
+      - name: Get Short SHA
+        id: short-sha
+        run: echo "SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
       - name: Install OpenShift CLI
         run: |
@@ -62,75 +53,37 @@ jobs:
             echo "changed=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Rebuild nginx-runtime image
+      - name: Rebuild nginx-runtime image (if changed)
         if: steps.nginx-check.outputs.changed == 'true'
         run: |
           echo "Nginx config changed, rebuilding nginx-runtime image..."
-          oc start-build eagle-public-nginx-runtime -n ${{ env.OPENSHIFT_NAMESPACE }} --wait --follow
+          oc start-build eagle-public-nginx-runtime -n ${{ env.OPENSHIFT_NAMESPACE }} --commit=${{ github.sha }} --wait --follow
 
-      - name: Login to OpenShift registry for Docker push
+      - name: Build Angular application
         run: |
-          # Use the OpenShift token to login to the image registry
-          docker login -u unused -p $(oc whoami -t) ${{ secrets.OPENSHIFT_REPOSITORY }}
-  
-      - name: Get Short SHA
-        id: short-sha
-        run: echo "SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "Building Angular application from commit ${{ github.sha }}..."
+          oc start-build eagle-public-angular-builder -n ${{ env.OPENSHIFT_NAMESPACE }} --commit=${{ github.sha }} --wait --follow
 
-      - name: Pull latest nginx-runtime base image
+      - name: Build final image
         run: |
-          # Always pull the latest base image to ensure we have the newest nginx-runtime
-          docker pull ${{ secrets.OPENSHIFT_REPOSITORY }}/${{ env.OPENSHIFT_NAMESPACE }}/eagle-public-nginx-runtime:latest
+          echo "Building final eagle-public image..."
+          oc start-build eagle-public-build -n ${{ env.OPENSHIFT_NAMESPACE }} --wait --follow
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: ${{ secrets.OPENSHIFT_REPOSITORY }}/${{ env.OPENSHIFT_NAMESPACE }}/${{ env.IMAGE_NAME }}:ci-latest
-          file: Dockerfile.Github
-          no-cache: ${{ steps.nginx-check.outputs.changed == 'true' }}
-          labels: |
-            commit.author=${{ github.event.head_commit.author.email }}
-            commit.id=${{ github.event.head_commit.id }}
-            commit.timestamp=${{ github.event.head_commit.timestamp }}
-            commit.message=${{ github.event.head_commit.message }}
-
-  deploy-to-dev:
-    name: Deploy to Dev
-    needs: build
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Install OpenShift CLI
+      - name: Tag image for dev deployment
         run: |
-          curl -LO "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz"
-          tar -xvzf openshift-client-linux.tar.gz
-          sudo mv oc /usr/local/bin/
-          rm -f openshift-client-linux.tar.gz
-
-      - name: Log into OpenShift
-        uses: redhat-actions/oc-login@v1.3
-        with:
-          openshift_server_url: ${{ secrets.OPENSHIFT_URL }}
-          openshift_token: ${{ secrets.OPENSHIFT_TOKEN }}
-          namespace: ${{ env.OPENSHIFT_NAMESPACE }}
-
-      - name: Tag image as dev
-        run: |
-          echo "Tagging ci-latest as dev to trigger deployment..."
-          oc tag ${{ env.OPENSHIFT_NAMESPACE }}/${{ env.IMAGE_NAME }}:ci-latest ${{ env.OPENSHIFT_NAMESPACE }}/${{ env.IMAGE_NAME }}:dev
+          echo "Tagging latest as dev to trigger deployment..."
+          oc tag ${{ env.OPENSHIFT_NAMESPACE }}/${{ env.IMAGE_NAME }}:latest ${{ env.OPENSHIFT_NAMESPACE }}/${{ env.IMAGE_NAME }}:dev
 
       - name: Wait for deployment
         run: |
           echo "Waiting for deployment to complete..."
-          oc rollout status dc/${{ env.IMAGE_NAME }} -n ${{ env.OPENSHIFT_DEV_NAMESPACE }} --watch=true
+          oc rollout status dc/${{ env.IMAGE_NAME }} -n ${{ env.OPENSHIFT_DEV_NAMESPACE }} --watch=true --timeout=300s
 
   promotion:
     name: Create Promotion Pull Request
     needs: build
     runs-on: ubuntu-24.04
     steps:
-      # Update promotion/test-pr with new commit hash
       - name: Checkout promotion/test
         uses: actions/checkout@v4
         with:
