@@ -3,8 +3,6 @@ on:
   push:
     branches:
       - develop
-    paths-ignore:
-      - ".github/**"
 
 env:
   OPENSHIFT_NAMESPACE: 6cdc9e-tools
@@ -79,6 +77,11 @@ jobs:
         id: short-sha
         run: echo "SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
+      - name: Pull latest nginx-runtime base image
+        run: |
+          # Always pull the latest base image to ensure we have the newest nginx-runtime
+          docker pull ${{ secrets.OPENSHIFT_REPOSITORY }}/${{ env.OPENSHIFT_NAMESPACE }}/eagle-public-nginx-runtime:latest
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
@@ -86,6 +89,7 @@ jobs:
           push: true
           tags: ${{ secrets.OPENSHIFT_REPOSITORY }}/${{ env.OPENSHIFT_NAMESPACE }}/${{ env.IMAGE_NAME }}:ci-latest
           file: Dockerfile.Github
+          no-cache: ${{ steps.nginx-check.outputs.changed == 'true' }}
           labels: |
             commit.author=${{ github.event.head_commit.author.email }}
             commit.id=${{ github.event.head_commit.id }}
