@@ -30,8 +30,7 @@
                 "input": "public"
               },
               "src/favicon.ico",
-              "src/assets",
-              "src/env.js"
+              "src/assets"
             ],
             "styles": [
               "node_modules/bootstrap/dist/css/bootstrap.min.css",
@@ -82,7 +81,16 @@
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true
+              "sourceMap": true,
+              "assets": [
+                {
+                  "glob": "**/*",
+                  "input": "public"
+                },
+                "src/favicon.ico",
+                "src/assets",
+                "src/env.js"
+              ]
             }
           },
           "defaultConfiguration": "production"
