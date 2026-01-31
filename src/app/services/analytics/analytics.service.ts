@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import Analytics from 'analytics';
 import type { AnalyticsInstance } from 'analytics';
 import { penguinAnalyticsPlugin } from './penguin-analytics-plugin';
+import { ConfigService } from '../config.service';
 
 interface PluginWithStartTracking {
   startTracking?: () => void;
@@ -13,12 +14,14 @@ interface PluginWithStartTracking {
  */
 @Injectable({ providedIn: 'root' })
 export class AnalyticsService {
+  private configService = inject(ConfigService);
   private analytics: AnalyticsInstance;
   private plugin: PluginWithStartTracking | null = null;
 
   constructor() {
-    const apiUrl = window.localStorage.getItem('from_public_server--analytics_api_url') || '/api/analytics';
-    const debug = window.localStorage.getItem('from_public_server--deployment_env') === 'local';
+    const config = this.configService.config;
+    const apiUrl = config.ANALYTICS_API_URL || 'http://localhost:3000';
+    const debug = config.ANALYTICS_DEBUG ?? (config.ENVIRONMENT === 'local');
 
     const plugin = penguinAnalyticsPlugin({ apiUrl, sourceApp: 'eagle-public', debug });
     this.plugin = plugin as unknown as PluginWithStartTracking;

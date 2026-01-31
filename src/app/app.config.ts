@@ -1,4 +1,4 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners, ErrorHandler } from '@angular/core';
+import { ApplicationConfig, provideBrowserGlobalErrorListeners, ErrorHandler, inject, provideAppInitializer } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors, HttpInterceptorFn } from '@angular/common/http';
 
@@ -6,13 +6,20 @@ import { routes } from './app.routes';
 import { httpCacheInterceptor } from './interceptors/http-cache.interceptor';
 import { loggingInterceptor } from './interceptors/logging.interceptor';
 import { GlobalErrorHandler } from './services/global-error-handler';
+import { ConfigService } from './services/config.service';
+
+interface EnvConfig {
+  ENVIRONMENT?: string;
+}
+
+declare const window: Window & { __env?: EnvConfig };
 
 /**
  * Detect if the application is running in production environment
  */
 function isProduction(): boolean {
-  const deployment_env = window.localStorage.getItem('from_public_server--deployment_env');
-  return deployment_env === 'prod';
+  const env = window.__env || {};
+  return env.ENVIRONMENT === 'prod';
 }
 
 /**
@@ -36,6 +43,10 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(withInterceptors(getHttpInterceptors())),
-    { provide: ErrorHandler, useClass: GlobalErrorHandler }
+    { provide: ErrorHandler, useClass: GlobalErrorHandler },
+    provideAppInitializer(() => {
+      const configService = inject(ConfigService);
+      return configService.init();
+    })
   ]
 };

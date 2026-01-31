@@ -1,4 +1,4 @@
-name: Build
+name: Build and Deploy to Dev
 on:
   push:
     branches:
@@ -8,6 +8,7 @@ on:
 
 env:
   OPENSHIFT_NAMESPACE: 6cdc9e-tools
+  OPENSHIFT_DEV_NAMESPACE: 6cdc9e-dev
   IMAGE_NAME: eagle-public
   TEST_PROMO_BRANCH: promotion/test
   TEST_PROMO_PR_BRANCH: promotion/test-pr
@@ -90,6 +91,36 @@ jobs:
             commit.id=${{ github.event.head_commit.id }}
             commit.timestamp=${{ github.event.head_commit.timestamp }}
             commit.message=${{ github.event.head_commit.message }}
+
+  deploy-to-dev:
+    name: Deploy to Dev
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install OpenShift CLI
+        run: |
+          curl -LO "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz"
+          tar -xvzf openshift-client-linux.tar.gz
+          sudo mv oc /usr/local/bin/
+          rm -f openshift-client-linux.tar.gz
+
+      - name: Log into OpenShift
+        uses: redhat-actions/oc-login@v1.3
+        with:
+          openshift_server_url: ${{ secrets.OPENSHIFT_URL }}
+          openshift_token: ${{ secrets.OPENSHIFT_TOKEN }}
+          namespace: ${{ env.OPENSHIFT_NAMESPACE }}
+
+      - name: Tag image as dev
+        run: |
+          echo "Tagging ci-latest as dev to trigger deployment..."
+          oc tag ${{ env.OPENSHIFT_NAMESPACE }}/${{ env.IMAGE_NAME }}:ci-latest ${{ env.OPENSHIFT_NAMESPACE }}/${{ env.IMAGE_NAME }}:dev
+
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for deployment to complete..."
+          oc rollout status dc/${{ env.IMAGE_NAME }} -n ${{ env.OPENSHIFT_DEV_NAMESPACE }} --watch=true
+
   promotion:
     name: Create Promotion Pull Request
     needs: build

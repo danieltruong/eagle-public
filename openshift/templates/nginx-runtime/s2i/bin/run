@@ -1,33 +1,51 @@
 #!/bin/bash
 echo "Starting nginx-runtime..."
 
-# Set defaults
-export DEPLOYMENT_ENVIRONMENT=${DEPLOYMENT_ENVIRONMENT:-dev}
-export BANNER_COLOUR=${BANNER_COLOUR:-blue}
-
-# Set analytics API URL based on environment
-case "$DEPLOYMENT_ENVIRONMENT" in
-    prod) export ANALYTICS_API_URL=${ANALYTICS_API_URL:-/api/analytics} ;;
-    test) export ANALYTICS_API_URL=${ANALYTICS_API_URL:-/api/analytics} ;;
-    *)    export ANALYTICS_API_URL=${ANALYTICS_API_URL:-/api/analytics} ;;
-esac
-
-# Generate publicServerEnvironmentSettings.js from template
-if [ -f /tmp/publicServerEnvironmentSettings.js.template ]; then
-    sed "s~\${DEPLOYMENT_ENVIRONMENT}~${DEPLOYMENT_ENVIRONMENT}~g; \
-         s~\${BANNER_COLOUR}~${BANNER_COLOUR}~g; \
-         s~\${ANALYTICS_API_URL}~${ANALYTICS_API_URL}~g" \
-        /tmp/publicServerEnvironmentSettings.js.template > /etc/nginx/publicServerEnvironmentSettings.js
-    echo "Environment: ${DEPLOYMENT_ENVIRONMENT}, Analytics: ${ANALYTICS_API_URL}"
-fi
-
-# Process nginx.conf template
+# Process nginx.conf template (if exists)
 if [ -f /tmp/nginx.conf.template ]; then
     sed "s~%RealIpFrom%~${RealIpFrom:-172.51.0.0/16}~g; \
          s~%IpFilterRules%~${IpFilterRules}~g; \
          s~%AdditionalRealIpFromRules%~${AdditionalRealIpFromRules}~g" \
         /tmp/nginx.conf.template > /etc/nginx/nginx.conf
 fi
+
+# Set ANALYTICS_API_URL based on environment if not explicitly set
+if [ -z "$ANALYTICS_API_URL" ]; then
+    case "$DEPLOYMENT_ENVIRONMENT" in
+        prod) ANALYTICS_API_URL="https://penguin-analytics-api-6cdc9e-prod.apps.silver.devops.gov.bc.ca" ;;
+        test) ANALYTICS_API_URL="https://penguin-analytics-api-6cdc9e-test.apps.silver.devops.gov.bc.ca" ;;
+        *)    ANALYTICS_API_URL="https://penguin-analytics-api-6cdc9e-dev.apps.silver.devops.gov.bc.ca" ;;
+    esac
+fi
+
+# Set ANALYTICS_DEBUG based on environment (enabled for non-prod)
+if [ -z "$ANALYTICS_DEBUG" ]; then
+    case "$DEPLOYMENT_ENVIRONMENT" in
+        prod) ANALYTICS_DEBUG="false" ;;
+        *)    ANALYTICS_DEBUG="true" ;;
+    esac
+fi
+
+# Generate env.js with runtime environment variables
+# Uses existing OpenShift env vars: REMOTE_API_PATH, REMOTE_ADMIN_PATH, DEPLOYMENT_ENVIRONMENT, BANNER_COLOUR, etc.
+cat > /tmp/app/dist/env.js <<EOF
+(function (window) {
+  window.__env = window.__env || {};
+  window.__env.debugMode = ${DEBUG_MODE:-false};
+  
+  // Server-generated runtime configuration
+  window.__env.ENVIRONMENT = '${DEPLOYMENT_ENVIRONMENT:-local}';
+  window.__env.BANNER_COLOUR = '${BANNER_COLOUR:-red}';
+  window.__env.API_PATH = '${REMOTE_API_PATH:-https://eagle-dev.apps.silver.devops.gov.bc.ca/api/public}';
+  window.__env.ADMIN_PATH = '${REMOTE_ADMIN_PATH:-/admin/}';
+  window.__env.ANALYTICS_API_URL = '${ANALYTICS_API_URL}';
+  window.__env.ANALYTICS_DEBUG = ${ANALYTICS_DEBUG};
+  window.__env.SURVEY_URL = '${SURVEY_URL}' === '' ? null : '${SURVEY_URL}';
+  window.__env.SHOW_SURVEY_BANNER = '${SHOW_SURVEY_BANNER:-false}' === 'true';
+}(this));
+EOF
+
+echo "Generated env.js: ENVIRONMENT=${DEPLOYMENT_ENVIRONMENT:-local}, API_PATH=${REMOTE_API_PATH}, ANALYTICS_API_URL=${ANALYTICS_API_URL}"
 
 # HTTP basic auth (if configured)
 if [ -n "$HTTP_BASIC_USERNAME" ] && [ -n "$HTTP_BASIC_PASSWORD" ]; then

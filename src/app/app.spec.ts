@@ -10,7 +10,7 @@ describe('App', () => {
   let component: App;
   let fixture: ComponentFixture<App>;
   let mockApiService: { apiPath: string; env: string; bannerColour: string; adminUrl: string };
-  let mockConfigService: { init: () => void; lists: { subscribe: () => void } };
+  let mockConfigService: { init: () => void; lists: { subscribe: () => void }; config: any };
 
   beforeEach(() => {
     mockApiService = {
@@ -22,7 +22,15 @@ describe('App', () => {
 
     mockConfigService = {
       init: () => { /* mock implementation */ },
-      lists: of([])
+      lists: of([]),
+      config: {
+        ENVIRONMENT: 'test',
+        BANNER_COLOUR: 'red',
+        API_PATH: 'https://great-api.gov.bc.ca/api/public',
+        ADMIN_PATH: 'http://localhost:4000/admin/',
+        ANALYTICS_API_URL: 'http://localhost:3000',
+        ANALYTICS_DEBUG: true
+      }
     };
 
     TestBed.configureTestingModule({
