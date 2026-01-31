@@ -12,14 +12,9 @@ LABEL io.openshift.s2i.scripts-url=image://$STI_SCRIPTS_PATH
 COPY nginx.conf.template /tmp/
 COPY default.conf /etc/nginx/conf.d/
 
-# Copy publicServerEnvironmentSettings.js template
-COPY publicServerEnvironmentSettings.js.template /tmp/
-
 # Setup directories and permissions
 RUN mkdir -p /etc/nginx/ && \
-    echo "" > /etc/nginx/publicServerEnvironmentSettings.js && \
-    mkdir -p /tmp/app/dist/ && \
-    ln -sf /etc/nginx/publicServerEnvironmentSettings.js /tmp/app/dist/publicServerEnvironmentSettings.js
+    mkdir -p /tmp/app/dist/
 
 # Fix up permissions for OpenShift
 # ref: https://torstenwalter.de/openshift/nginx/2017/08/04/nginx-on-openshift.html
@@ -27,7 +22,6 @@ RUN chmod -R g+rwx $STI_SCRIPTS_PATH && \
     chmod g+rw /var/cache/nginx \
                /var/run \
                /var/log/nginx \
-               /etc/nginx/publicServerEnvironmentSettings.js \
                /etc/nginx/nginx.conf \
                /tmp && \
     chmod 777 /run
