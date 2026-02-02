@@ -18,7 +18,11 @@ RUN mkdir -p /etc/nginx/ && \
 
 # Fix up permissions for OpenShift
 # ref: https://torstenwalter.de/openshift/nginx/2017/08/04/nginx-on-openshift.html
+# OpenShift runs containers with random UIDs in the root group (gid=0)
+# So we need group write permissions on directories the app needs to write to
 RUN chmod -R g+rwx $STI_SCRIPTS_PATH && \
+    chmod -R g+rwx /tmp/app && \
+    chgrp -R 0 /tmp/app && \
     chmod g+rw /var/cache/nginx \
                /var/run \
                /var/log/nginx \
