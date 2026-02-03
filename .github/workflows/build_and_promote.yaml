@@ -1,23 +1,28 @@
+# =============================================================================
+# Build and Deploy to Dev
+# =============================================================================
+# Triggered on push to develop branch.
+# Builds Docker image, pushes to OpenShift registry, deploys to dev namespace.
+# =============================================================================
+
 name: Build and Deploy to Dev
+
 on:
   push:
     branches:
       - develop
 
+permissions: write-all
+
 env:
-  REGISTRY: image-registry.openshift-image-registry.svc:5000
   OPENSHIFT_NAMESPACE: 6cdc9e-tools
   OPENSHIFT_DEV_NAMESPACE: 6cdc9e-dev
   IMAGE_NAME: eagle-public
-  TEST_PROMO_BRANCH: promotion/test
-  TEST_PROMO_PR_BRANCH: promotion/test-pr
 
 jobs:
   build:
-    name: Build and Deploy
+    name: Build and Deploy to Dev
     runs-on: ubuntu-24.04
-    outputs:
-      SHORT_SHA: ${{ steps.short-sha.outputs.SHA }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -78,41 +83,15 @@ jobs:
           echo "Checking pod health..."
           kubectl get pods -n ${{ env.OPENSHIFT_DEV_NAMESPACE }} -l app.kubernetes.io/name=eagle-public
 
-  promotion:
-    name: Create Promotion Pull Request
-    needs: build
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout promotion/test
-        uses: actions/checkout@v4
-        with:
-          ref: "${{ env.TEST_PROMO_BRANCH }}"
-
-      - name: Update state.json
+      - name: Summary
         run: |
-          git config --global user.name "${{ github.actor }}"
-          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
-
-          git checkout -B ${{ env.TEST_PROMO_PR_BRANCH }}
-          git reset --hard ${{ env.TEST_PROMO_BRANCH }}
-
-          echo $(jq '.commit="${{ needs.build.outputs.SHORT_SHA }}"' state.json) > state.json
-
-          git commit -am "Promote commit ${{ needs.build.outputs.SHORT_SHA }} to Test"
-          git push --force origin ${{ env.TEST_PROMO_PR_BRANCH }}
-
-      - name: Create Pull Request
-        uses: repo-sync/pull-request@v2
-        with:
-          source_branch: ${{ env.TEST_PROMO_PR_BRANCH }}
-          destination_branch: ${{ env.TEST_PROMO_BRANCH }}
-          pr_title: "Deploy to Test Environment"
-          pr_body: |
-            :crown: *An automated PR*
-
-            This PR triggers a deployment to Test once it's fully merged.
-            
-            **Commit:** ${{ needs.build.outputs.SHORT_SHA }}
-          pr_label: "auto-pr,test env,pipeline"
-          pr_draft: true
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | ${{ steps.short-sha.outputs.SHA }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Environment** | dev |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image Tag** | ${{ steps.short-sha.outputs.SHA }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "To deploy to Test, manually trigger the **Deploy to Test** workflow with image tag: \`${{ steps.short-sha.outputs.SHA }}\`" >> $GITHUB_STEP_SUMMARY
