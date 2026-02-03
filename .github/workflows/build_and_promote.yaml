@@ -5,6 +5,7 @@ on:
       - develop
 
 env:
+  REGISTRY: image-registry.openshift-image-registry.svc:5000
   OPENSHIFT_NAMESPACE: 6cdc9e-tools
   OPENSHIFT_DEV_NAMESPACE: 6cdc9e-dev
   IMAGE_NAME: eagle-public
@@ -20,19 +21,25 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 2  # Need at least 2 commits to compare changes
 
       - name: Get Short SHA
         id: short-sha
         run: echo "SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Install OpenShift CLI
         run: |
-          curl -LO "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz"
-          tar -xvzf openshift-client-linux.tar.gz
+          curl -sLO "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz"
+          tar -xzf openshift-client-linux.tar.gz
           sudo mv oc /usr/local/bin/
-          rm -f openshift-client-linux.tar.gz
+          rm -f openshift-client-linux.tar.gz kubectl
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v3.14.0'
 
       - name: Log into OpenShift
         uses: redhat-actions/oc-login@v1.3
@@ -41,53 +48,38 @@ jobs:
           openshift_token: ${{ secrets.OPENSHIFT_TOKEN }}
           namespace: ${{ env.OPENSHIFT_NAMESPACE }}
 
-      - name: Check if nginx config changed
-        id: nginx-check
+      - name: Log into OpenShift Registry
         run: |
-          # Check if nginx-runtime config files changed in this commit
-          if git diff --name-only HEAD~1 HEAD 2>/dev/null | grep -q "openshift/templates/nginx-runtime/"; then
-            echo "Nginx config files changed"
-            echo "changed=true" >> $GITHUB_OUTPUT
-          else
-            echo "No nginx config changes detected"
-            echo "changed=false" >> $GITHUB_OUTPUT
-          fi
+          oc registry login --to=/tmp/docker-config.json
+          echo "DOCKER_CONFIG=/tmp" >> $GITHUB_ENV
 
-      - name: Rebuild nginx-runtime image (if changed)
-        if: steps.nginx-check.outputs.changed == 'true'
-        run: |
-          echo "Nginx config changed, rebuilding nginx-runtime image..."
-          oc start-build eagle-public-nginx-runtime -n ${{ env.OPENSHIFT_NAMESPACE }} --commit=${{ github.sha }} --wait --follow
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.OPENSHIFT_NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ steps.short-sha.outputs.SHA }}
+            ${{ env.REGISTRY }}/${{ env.OPENSHIFT_NAMESPACE }}/${{ env.IMAGE_NAME }}:dev
+            ${{ env.REGISTRY }}/${{ env.OPENSHIFT_NAMESPACE }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Update env.js for dev environment
+      - name: Deploy to Dev with Helm
         run: |
-          # Update env.js to enable configEndpoint for deployed environment
-          # In deployed environments, nginx proxies /api to the backend
-          sed -i "s|window.__env.configEndpoint = false;|window.__env.configEndpoint = true;|g" src/env.js
-          sed -i "s|window.__env.ENVIRONMENT = 'local';|window.__env.ENVIRONMENT = 'dev';|g" src/env.js
-          sed -i "s|window.__env.GH_HASH = 'local-build';|window.__env.GH_HASH = '${{ steps.short-sha.outputs.SHA }}';|g" src/env.js
-          echo "Updated env.js for dev environment:"
-          cat src/env.js
+          helm upgrade --install eagle-public ./helm/eagle-public \
+            --namespace ${{ env.OPENSHIFT_DEV_NAMESPACE }} \
+            --values ./helm/eagle-public/values-dev.yaml \
+            --set image.tag=${{ steps.short-sha.outputs.SHA }} \
+            --wait --timeout=300s
 
-      - name: Build Angular application
+      - name: Verify Deployment
         run: |
-          echo "Building Angular application from commit ${{ github.sha }}..."
-          oc start-build eagle-public-angular-builder -n ${{ env.OPENSHIFT_NAMESPACE }} --commit=${{ github.sha }} --wait --follow
-
-      - name: Build final image
-        run: |
-          echo "Building final eagle-public image..."
-          oc start-build eagle-public-build -n ${{ env.OPENSHIFT_NAMESPACE }} --wait --follow
-
-      - name: Tag image for dev deployment
-        run: |
-          echo "Tagging latest as dev to trigger deployment..."
-          oc tag ${{ env.OPENSHIFT_NAMESPACE }}/${{ env.IMAGE_NAME }}:latest ${{ env.OPENSHIFT_NAMESPACE }}/${{ env.IMAGE_NAME }}:dev
-
-      - name: Wait for deployment
-        run: |
-          echo "Waiting for deployment to complete..."
-          oc rollout status dc/${{ env.IMAGE_NAME }} -n ${{ env.OPENSHIFT_DEV_NAMESPACE }} --watch=true --timeout=300s
+          echo "Checking deployment status..."
+          kubectl rollout status deployment/eagle-public -n ${{ env.OPENSHIFT_DEV_NAMESPACE }} --timeout=120s
+          
+          echo "Checking pod health..."
+          kubectl get pods -n ${{ env.OPENSHIFT_DEV_NAMESPACE }} -l app.kubernetes.io/name=eagle-public
 
   promotion:
     name: Create Promotion Pull Request
@@ -98,10 +90,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: "${{ env.TEST_PROMO_BRANCH }}"
+
       - name: Update state.json
         run: |
           git config --global user.name "${{ github.actor }}"
-          git config --global user.email "${{github.actor}}@users.noreply.github.com"
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
 
           git checkout -B ${{ env.TEST_PROMO_PR_BRANCH }}
           git reset --hard ${{ env.TEST_PROMO_BRANCH }}
@@ -110,6 +103,7 @@ jobs:
 
           git commit -am "Promote commit ${{ needs.build.outputs.SHORT_SHA }} to Test"
           git push --force origin ${{ env.TEST_PROMO_PR_BRANCH }}
+
       - name: Create Pull Request
         uses: repo-sync/pull-request@v2
         with:
@@ -119,7 +113,9 @@ jobs:
           pr_body: |
             :crown: *An automated PR*
 
-            This PR triggers an deployment to Test once it's fully merged.
+            This PR triggers a deployment to Test once it's fully merged.
+            
+            **Commit:** ${{ needs.build.outputs.SHORT_SHA }}
           pr_label: "auto-pr,test env,pipeline"
           pr_draft: true
           github_token: ${{ secrets.GITHUB_TOKEN }}

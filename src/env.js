@@ -21,7 +21,9 @@
   // Local development paths
   window.__env.ADMIN_PATH = 'http://localhost:4200/admin/';
 
-  // Analytics - for local dev, use localhost penguin-analytics (port 3001)
+  // Analytics
+  // Local dev: use localhost penguin-analytics (port 3001)
+  // Deployed: will be fetched from /api/config (configEndpoint=true)
   window.__env.ANALYTICS_API_URL = 'http://localhost:3001';
   window.__env.ANALYTICS_DEBUG = true;
 
