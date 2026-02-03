@@ -16,7 +16,7 @@ spec:
     insecureEdgeTerminationPolicy: {{ .Values.route.tls.insecureEdgeTerminationPolicy }}
   to:
     kind: Service
-    name: {{ include "eagle-public.fullname" . }}
+    name: {{ .Values.route.serviceName | default "rproxy" }}
     weight: 100
   wildcardPolicy: None
 {{- end }}
