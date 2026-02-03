@@ -87,20 +87,6 @@ jobs:
           echo "Checking pod health..."
           kubectl get pods -n ${{ env.OPENSHIFT_PROD_NAMESPACE }} -l app.kubernetes.io/name=eagle-public
 
-      - name: Notify Rocket.Chat
-        if: always()
-        continue-on-error: true
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            curl -X POST -H 'Content-Type: application/json' \
-              --data '{"alias":"GitHub Actions","avatar":"https://github.githubassets.com/images/modules/logos_page/Octocat.png","text":"🚀 eagle-public deployed to **PRODUCTION** with tag: `${{ steps.image-tag.outputs.TAG }}`"}' \
-              ${{ secrets.ROCKET_CHAT_URL }} || true
-          else
-            curl -X POST -H 'Content-Type: application/json' \
-              --data '{"alias":"GitHub Actions","avatar":"https://github.githubassets.com/images/modules/logos_page/Octocat.png","text":"🔥 eagle-public deployment to **PRODUCTION** FAILED for tag: `${{ steps.image-tag.outputs.TAG }}`"}' \
-              ${{ secrets.ROCKET_CHAT_URL }} || true
-          fi
-
       - name: Summary
         run: |
           echo "## 🚀 Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
