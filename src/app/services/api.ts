@@ -522,7 +522,7 @@ export class ApiService {
   }
 
   getTopNewsItems(): Observable<any[]> {
-    const queryString = 'recentActivity?top=true';
+    const queryString = 'public/recentActivity?top=true';
     return this.http.get<any[]>(`${this.apiPath}/${queryString}`, {});
   }
 
