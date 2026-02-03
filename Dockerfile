@@ -15,11 +15,14 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies first (better layer caching)
-COPY package.json yarn.lock ./
+# Copy package files and yarn configuration
+COPY package.json yarn.lock .yarnrc.yml ./
+COPY .yarn ./.yarn
+
+# Install dependencies (uses node-modules linker per .yarnrc.yml)
 RUN corepack enable && yarn install --immutable
 
-# Copy source code
+# Copy source code (node_modules already exists from previous layer)
 COPY . .
 
 # Configure env.js for deployed environment:
