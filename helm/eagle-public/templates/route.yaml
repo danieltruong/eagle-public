@@ -10,7 +10,7 @@ spec:
   host: {{ .Values.route.host }}
   {{- end }}
   port:
-    targetPort: http
+    targetPort: {{ .Values.route.targetPort | default "8080-tcp" }}
   tls:
     termination: {{ .Values.route.tls.termination }}
     insecureEdgeTerminationPolicy: {{ .Values.route.tls.insecureEdgeTerminationPolicy }}
