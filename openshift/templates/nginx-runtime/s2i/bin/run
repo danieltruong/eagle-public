@@ -9,42 +9,13 @@ if [ -f /tmp/nginx.conf.template ]; then
         /tmp/nginx.conf.template > /etc/nginx/nginx.conf
 fi
 
-# Set ANALYTICS_API_URL - use nginx reverse proxy (defined in default.conf)
-# The reverse proxy forwards /api/analytics to the penguin-analytics-api service
-ANALYTICS_API_URL="/api/analytics"
-
-# Set ANALYTICS_DEBUG based on environment (enabled for non-prod)
-if [ -z "$ANALYTICS_DEBUG" ]; then
-    case "$DEPLOYMENT_ENVIRONMENT" in
-        prod) ANALYTICS_DEBUG="false" ;;
-        *)    ANALYTICS_DEBUG="true" ;;
-    esac
-fi
-
-# Generate env.js with runtime environment variables
-# Uses existing OpenShift env vars: REMOTE_API_PATH, REMOTE_ADMIN_PATH, DEPLOYMENT_ENVIRONMENT, BANNER_COLOUR, etc.
-cat > /tmp/app/dist/env.js <<EOF
-(function (window) {
-  window.__env = window.__env || {};
-  window.__env.debugMode = ${DEBUG_MODE:-false};
-  
-  // Server-generated runtime configuration
-  window.__env.ENVIRONMENT = '${DEPLOYMENT_ENVIRONMENT:-local}';
-  window.__env.BANNER_COLOUR = '${BANNER_COLOUR:-red}';
-  window.__env.API_PATH = '${REMOTE_API_PATH:-https://eagle-dev.apps.silver.devops.gov.bc.ca/api/public}';
-  window.__env.ADMIN_PATH = '${REMOTE_ADMIN_PATH:-/admin/}';
-  window.__env.ANALYTICS_API_URL = '${ANALYTICS_API_URL}';
-  window.__env.ANALYTICS_DEBUG = ${ANALYTICS_DEBUG};
-  window.__env.SURVEY_URL = '${SURVEY_URL}' === '' ? null : '${SURVEY_URL}';
-  window.__env.SHOW_SURVEY_BANNER = '${SHOW_SURVEY_BANNER:-false}' === 'true';
-}(this));
-EOF
-
-echo "Generated env.js: ENVIRONMENT=${DEPLOYMENT_ENVIRONMENT:-local}, API_PATH=${REMOTE_API_PATH}, ANALYTICS_API_URL=${ANALYTICS_API_URL}"
-
 # HTTP basic auth (if configured)
 if [ -n "$HTTP_BASIC_USERNAME" ] && [ -n "$HTTP_BASIC_PASSWORD" ]; then
     echo "$HTTP_BASIC_USERNAME:$(openssl passwd -crypt $HTTP_BASIC_PASSWORD)" > /tmp/.htpasswd
 fi
 
+# Note: Configuration is now loaded from the API (/api/config) at runtime
+# No need to generate env.js - the frontend fetches config from eagle-api
+
+echo "Starting nginx..."
 exec /usr/sbin/nginx -g "daemon off;"

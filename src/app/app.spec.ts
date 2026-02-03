@@ -28,7 +28,7 @@ describe('App', () => {
         BANNER_COLOUR: 'red',
         API_PATH: 'https://great-api.gov.bc.ca/api/public',
         ADMIN_PATH: 'http://localhost:4000/admin/',
-        ANALYTICS_API_URL: 'http://localhost:3000',
+        ANALYTICS_API_URL: 'http://localhost:3001',
         ANALYTICS_DEBUG: true
       }
     };

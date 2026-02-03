@@ -54,6 +54,15 @@
           },
           "configurations": {
             "production": {
+              "assets": [
+                {
+                  "glob": "**/*",
+                  "input": "public"
+                },
+                "src/favicon.ico",
+                "src/assets",
+                "src/env.js"
+              ],
               "budgets": [
                 {
                   "type": "initial",

@@ -59,6 +59,16 @@ jobs:
           echo "Nginx config changed, rebuilding nginx-runtime image..."
           oc start-build eagle-public-nginx-runtime -n ${{ env.OPENSHIFT_NAMESPACE }} --commit=${{ github.sha }} --wait --follow
 
+      - name: Update env.js for dev environment
+        run: |
+          # Update env.js to enable configEndpoint for deployed environment
+          # In deployed environments, nginx proxies /api to the backend
+          sed -i "s|window.__env.configEndpoint = false;|window.__env.configEndpoint = true;|g" src/env.js
+          sed -i "s|window.__env.ENVIRONMENT = 'local';|window.__env.ENVIRONMENT = 'dev';|g" src/env.js
+          sed -i "s|window.__env.GH_HASH = 'local-build';|window.__env.GH_HASH = '${{ steps.short-sha.outputs.SHA }}';|g" src/env.js
+          echo "Updated env.js for dev environment:"
+          cat src/env.js
+
       - name: Build Angular application
         run: |
           echo "Building Angular application from commit ${{ github.sha }}..."

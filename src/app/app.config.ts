@@ -7,20 +7,7 @@ import { httpCacheInterceptor } from './interceptors/http-cache.interceptor';
 import { loggingInterceptor } from './interceptors/logging.interceptor';
 import { GlobalErrorHandler } from './services/global-error-handler';
 import { ConfigService } from './services/config.service';
-
-interface EnvConfig {
-  ENVIRONMENT?: string;
-}
-
-declare const window: Window & { __env?: EnvConfig };
-
-/**
- * Detect if the application is running in production environment
- */
-function isProduction(): boolean {
-  const env = window.__env || {};
-  return env.ENVIRONMENT === 'prod';
-}
+import { AnalyticsService } from './services/analytics/analytics.service';
 
 /**
  * Build interceptors array based on environment
@@ -28,14 +15,9 @@ function isProduction(): boolean {
  * Non-production: cache + logging interceptors for debugging
  */
 function getHttpInterceptors(): HttpInterceptorFn[] {
-  const interceptors: HttpInterceptorFn[] = [httpCacheInterceptor];
-  
-  // Only include logging interceptor in non-production environments
-  if (!isProduction()) {
-    interceptors.push(loggingInterceptor);
-  }
-  
-  return interceptors;
+  // Always include cache interceptor, logging interceptor is lightweight
+  // and helps with debugging in all environments
+  return [httpCacheInterceptor, loggingInterceptor];
 }
 
 export const appConfig: ApplicationConfig = {
@@ -44,9 +26,16 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(withInterceptors(getHttpInterceptors())),
     { provide: ErrorHandler, useClass: GlobalErrorHandler },
-    provideAppInitializer(() => {
+    provideAppInitializer(async () => {
       const configService = inject(ConfigService);
-      return configService.init();
+      const analyticsService = inject(AnalyticsService);
+      
+      // Load configuration from API
+      await configService.init();
+      
+      // Initialize analytics with loaded config
+      analyticsService.initialize();
+      analyticsService.startTracking();
     })
   ]
 };
