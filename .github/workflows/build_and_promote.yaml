@@ -32,37 +32,23 @@ jobs:
         id: short-sha
         run: echo "SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Install OpenShift CLI
-        run: |
-          curl -LO "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz"
-          tar -xvzf openshift-client-linux.tar.gz
-          sudo mv oc /usr/local/bin/
-          rm -f openshift-client-linux.tar.gz
-
-      - name: Log into OpenShift
-        uses: redhat-actions/oc-login@v1
+      - name: Login to OpenShift registry
+        uses: docker/login-action@v3
         with:
-          openshift_server_url: ${{ secrets.OPENSHIFT_URL }}
-          openshift_token: ${{ secrets.OPENSHIFT_TOKEN }}
-          namespace: ${{ env.OPENSHIFT_NAMESPACE_TOOLS }}
+          registry: ${{ secrets.OPENSHIFT_REPOSITORY }}
+          username: ${{ secrets.OPENSHIFT_REPOSITORY_USERNAME }}
+          password: ${{ secrets.OPENSHIFT_REPOSITORY_PASSWORD }}
 
       - name: Build and push Docker image
         id: push
-        run: |
-          # Build Docker image
-          docker build -t ${{ env.IMAGE_NAME }}:dev .
-          
-          # Login to OpenShift registry
-          docker login -u $(oc whoami) -p $(oc whoami -t) image-registry.apps.silver.devops.gov.bc.ca
-          
-          # Tag and push images
-          docker tag ${{ env.IMAGE_NAME }}:dev image-registry.apps.silver.devops.gov.bc.ca/${{ env.OPENSHIFT_NAMESPACE_TOOLS }}/${{ env.IMAGE_NAME }}:dev
-          docker tag ${{ env.IMAGE_NAME }}:dev image-registry.apps.silver.devops.gov.bc.ca/${{ env.OPENSHIFT_NAMESPACE_TOOLS }}/${{ env.IMAGE_NAME }}:ci-latest
-          docker tag ${{ env.IMAGE_NAME }}:dev image-registry.apps.silver.devops.gov.bc.ca/${{ env.OPENSHIFT_NAMESPACE_TOOLS }}/${{ env.IMAGE_NAME }}:${{ steps.short-sha.outputs.SHA }}
-          
-          docker push image-registry.apps.silver.devops.gov.bc.ca/${{ env.OPENSHIFT_NAMESPACE_TOOLS }}/${{ env.IMAGE_NAME }}:dev
-          docker push image-registry.apps.silver.devops.gov.bc.ca/${{ env.OPENSHIFT_NAMESPACE_TOOLS }}/${{ env.IMAGE_NAME }}:ci-latest
-          docker push image-registry.apps.silver.devops.gov.bc.ca/${{ env.OPENSHIFT_NAMESPACE_TOOLS }}/${{ env.IMAGE_NAME }}:${{ steps.short-sha.outputs.SHA }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.OPENSHIFT_REPOSITORY }}/${{ env.OPENSHIFT_NAMESPACE_TOOLS }}/${{ env.IMAGE_NAME }}:dev
+            ${{ secrets.OPENSHIFT_REPOSITORY }}/${{ env.OPENSHIFT_NAMESPACE_TOOLS }}/${{ env.IMAGE_NAME }}:ci-latest
+            ${{ secrets.OPENSHIFT_REPOSITORY }}/${{ env.OPENSHIFT_NAMESPACE_TOOLS }}/${{ env.IMAGE_NAME }}:${{ steps.short-sha.outputs.SHA }}
 
   deploy:
     name: Deploy to Dev
