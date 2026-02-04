@@ -4,6 +4,10 @@ metadata:
   name: {{ include "eagle-public.fullname" . }}
   labels:
     {{- include "eagle-public.labels" . | nindent 4 }}
+  annotations:
+    # Trigger automatic rollout when ImageStreamTag is updated
+    image.openshift.io/triggers: |
+      [{"from":{"kind":"ImageStreamTag","name":"{{ .Values.image.name | default "eagle-public" }}:{{ .Values.image.tag }}","namespace":"{{ .Values.image.namespace | default "6cdc9e-tools" }}"},"fieldPath":"spec.template.spec.containers[?(@.name==\"{{ .Chart.Name }}\")].image"}]
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}

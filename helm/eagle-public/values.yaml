@@ -7,6 +7,9 @@ image:
   repository: image-registry.openshift-image-registry.svc:5000/6cdc9e-tools/eagle-public
   pullPolicy: Always
   tag: "latest"
+  # For OpenShift ImageStreamTag trigger
+  name: eagle-public
+  namespace: 6cdc9e-tools
 
 nameOverride: ""
 fullnameOverride: ""

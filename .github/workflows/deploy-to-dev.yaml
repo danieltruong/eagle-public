@@ -1,4 +1,4 @@
-name: Build and Deploy to Dev
+name: Deploy to Dev
 
 on:
   push:
@@ -84,6 +84,9 @@ jobs:
             --values ./helm/${{ env.APP_NAME }}/values-dev.yaml \
             --set image.tag=dev \
             --wait --timeout=5m
+          
+          echo "Restarting deployment to pull updated image..."
+          oc rollout restart deployment/${{ env.APP_NAME }} -n ${{ env.OPENSHIFT_NAMESPACE_DEV }}
 
       - name: Verify deployment
         run: |
@@ -91,4 +94,4 @@ jobs:
           oc rollout status deployment/${{ env.APP_NAME }} -n ${{ env.OPENSHIFT_NAMESPACE_DEV }} --timeout=5m
           
           echo "Deployment successful!"
-          oc get pods -n ${{ env.OPENSHIFT_NAMESPACE_DEV }} -l app=${{ env.APP_NAME }}
+          oc get pods -n ${{ env.OPENSHIFT_NAMESPACE_DEV }} -l app.kubernetes.io/name=${{ env.APP_NAME }}

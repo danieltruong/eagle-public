@@ -57,6 +57,9 @@ jobs:
             --values ./helm/${{ env.APP_NAME }}/values-prod.yaml \
             --set image.tag=prod \
             --wait --timeout=5m
+          
+          echo "Restarting deployment to pull updated image..."
+          oc rollout restart deployment/${{ env.APP_NAME }} -n ${{ env.OPENSHIFT_NAMESPACE_PROD }}
 
       - name: Verify deployment
         run: |
@@ -64,4 +67,4 @@ jobs:
           oc rollout status deployment/${{ env.APP_NAME }} -n ${{ env.OPENSHIFT_NAMESPACE_PROD }} --timeout=5m
           
           echo "Deployment successful!"
-          oc get pods -n ${{ env.OPENSHIFT_NAMESPACE_PROD }} -l app=${{ env.APP_NAME }}
+          oc get pods -n ${{ env.OPENSHIFT_NAMESPACE_PROD }} -l app.kubernetes.io/name=${{ env.APP_NAME }}
