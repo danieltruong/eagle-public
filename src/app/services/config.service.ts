@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 import { Observable, ReplaySubject, firstValueFrom, timeout } from 'rxjs';
@@ -45,9 +45,12 @@ export class ConfigService {
   private http = inject(HttpClient);
   private loadingState = inject(LoadingStateService);
 
-  // Environment configuration
-  private configuration: EnvConfig = {};
+  // Environment configuration as a signal for reactivity
+  private _config = signal<EnvConfig>({});
   private configLoaded = false;
+
+  // Expose config as a computed signal that components can react to
+  public readonly config = computed(() => this._config());
 
   // UI state defaults
   private _isApplistListVisible = false;
@@ -78,20 +81,20 @@ export class ConfigService {
 
     try {
       // Step 1: Start with env.js values (loaded before Angular via script tag)
-      this.configuration = { ...(window.__env || {}) };
+      this._config.set({ ...(window.__env || {}) });
       
-      if (this.configuration.logLevel === 0) {
-        console.log('ConfigService: env.js values:', this.configuration);
+      if (this._config().logLevel === 0) {
+        console.log('ConfigService: env.js values:', this._config());
       }
 
       // Step 2: If deployed (configEndpoint=true), fetch config from API
-      if (this.configuration.configEndpoint === true) {
+      if (this._config().configEndpoint === true) {
         try {
           const apiConfig = await this.getConfigFromApi();
           // Merge: API values override env.js values
-          this.configuration = { ...this.configuration, ...apiConfig };
-          if (this.configuration.logLevel === 0) {
-            console.log('ConfigService: merged with API config:', this.configuration);
+          this._config.set({ ...this._config(), ...apiConfig });
+          if (this._config().logLevel === 0) {
+            console.log('ConfigService: merged with API config:', this._config());
           }
         } catch (e) {
           console.error('ConfigService: API config failed, using env.js defaults:', e);
@@ -118,12 +121,13 @@ export class ConfigService {
    * DEPLOYED (configEndpoint=true): Returns relative path (rproxy handles routing)
    */
   public getApiPath(): string {
-    const apiPath = this.configuration.API_PATH || '/api';
+    const config = this._config();
+    const apiPath = config.API_PATH || '/api';
     
     // If LOCAL DEV (configEndpoint=false) and API_LOCATION is set, use full URL
     // This allows local dev to hit remote APIs directly
-    if (this.configuration.configEndpoint === false && this.configuration.API_LOCATION) {
-      return this.configuration.API_LOCATION + apiPath;
+    if (config.configEndpoint === false && config.API_LOCATION) {
+      return config.API_LOCATION + apiPath;
     }
     
     // Deployed: use relative path (rproxy routes /api/* to eagle-api)
@@ -198,10 +202,8 @@ export class ConfigService {
     return window.__env?.logLevel ?? 4;
   }
 
-  // Expose configuration
-  get config(): EnvConfig {
-    return this.configuration;
-  }
+  // Note: config is now exposed as a computed signal above
+  // Components should use configService.config().PROPERTY to get reactive updates
 
   get isConfigLoaded(): boolean {
     return this.configLoaded;

@@ -34,27 +34,27 @@ export class ApiService {
 
   // Configuration getters - delegated to ConfigService
   get apiPath(): string {
-    return this.configService.config.API_PATH || 'https://eagle-dev.apps.silver.devops.gov.bc.ca/api/public';
+    return this.configService.config().API_PATH || 'https://eagle-dev.apps.silver.devops.gov.bc.ca/api/public';
   }
 
   get adminUrl(): string {
-    return this.configService.config.ADMIN_PATH || 'http://localhost:4200/admin/';
+    return this.configService.config().ADMIN_PATH || 'http://localhost:4200/admin/';
   }
 
   get env(): string {
-    return this.configService.config.ENVIRONMENT || 'local';
+    return this.configService.config().ENVIRONMENT || 'local';
   }
 
   get bannerColour(): string {
-    return this.configService.config.BANNER_COLOUR || 'red';
+    return this.configService.config().BANNER_COLOUR || 'red';
   }
 
   get surveyUrl(): string | null {
-    return this.configService.config.SURVEY_URL || null;
+    return this.configService.config().SURVEY_URL || null;
   }
 
   get showSurveyBanner(): boolean {
-    return this.configService.config.SHOW_SURVEY_BANNER ?? false;
+    return this.configService.config().SHOW_SURVEY_BANNER ?? false;
   }
 
   handleError(error: any): Observable<any> {
