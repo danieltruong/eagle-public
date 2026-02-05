@@ -26,11 +26,6 @@ jobs:
           sudo mv oc /usr/local/bin/
           rm -f openshift-client-linux.tar.gz
 
-      - name: Install Helm
-        run: |
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-          helm version
-
       - name: Log into OpenShift
         uses: redhat-actions/oc-login@v1
         with:
@@ -48,23 +43,12 @@ jobs:
           oc -n ${{ env.OPENSHIFT_NAMESPACE_TOOLS }} tag --reference-policy='local' \
             ${{ env.IMAGE_NAME }}:test ${{ env.IMAGE_NAME }}:prod
 
-      - name: Deploy with Helm
-        run: |
-          oc project ${{ env.OPENSHIFT_NAMESPACE_PROD }}
-          
-          helm upgrade --install ${{ env.APP_NAME }} ./helm/${{ env.APP_NAME }} \
-            --namespace ${{ env.OPENSHIFT_NAMESPACE_PROD }} \
-            --values ./helm/${{ env.APP_NAME }}/values-prod.yaml \
-            --set image.tag=prod \
-            --wait --timeout=5m
-          
-          echo "Restarting deployment to pull updated image..."
-          oc rollout restart deployment/${{ env.APP_NAME }} -n ${{ env.OPENSHIFT_NAMESPACE_PROD }}
-
+      # PROD uses DeploymentConfig which auto-triggers on image tag change
+      # No manual rollout needed - just verify it completes
       - name: Verify deployment
         run: |
-          echo "Waiting for rollout to complete..."
-          oc rollout status deployment/${{ env.APP_NAME }} -n ${{ env.OPENSHIFT_NAMESPACE_PROD }} --timeout=5m
+          echo "Waiting for DeploymentConfig rollout to complete..."
+          oc rollout status dc/${{ env.APP_NAME }} -n ${{ env.OPENSHIFT_NAMESPACE_PROD }} --timeout=5m
           
           echo "Deployment successful!"
-          oc get pods -n ${{ env.OPENSHIFT_NAMESPACE_PROD }} -l app.kubernetes.io/name=${{ env.APP_NAME }}
+          oc get pods -n ${{ env.OPENSHIFT_NAMESPACE_PROD }} -l deploymentconfig=${{ env.APP_NAME }}

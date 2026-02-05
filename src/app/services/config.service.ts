@@ -1,8 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 
-import { Observable, ReplaySubject, firstValueFrom } from 'rxjs';
-import { map, catchError, take } from 'rxjs/operators';
+import { Observable, ReplaySubject, firstValueFrom, timeout } from 'rxjs';
 import { LoadingStateService } from './loading-state.service';
 
 interface EnvConfig {
@@ -20,16 +19,27 @@ interface EnvConfig {
   GH_HASH?: string;
 }
 
-// env.js sets window.__env before Angular loads
+// env.js sets window.__env before Angular loads (via script tag in index.html)
 declare global {
   interface Window { __env: EnvConfig; }
 }
 
-//
-// This service/class provides a centralized place to persist config values
-// (eg, to share values between multiple components).
-//
-
+/**
+ * Configuration Service
+ * 
+ * Manages application configuration with two modes:
+ * 
+ * LOCAL DEV (configEndpoint = false):
+ *   - Uses values from src/env.js directly
+ *   - API calls use relative paths through Angular proxy (proxy.conf.json)
+ *   - proxy.conf.json routes /api/* to the dev API server
+ * 
+ * DEPLOYED (configEndpoint = true):
+ *   - env.js is modified by Dockerfile: sed changes configEndpoint to true
+ *   - Fetches config from /api/config endpoint
+ *   - API config values override env.js defaults
+ *   - nginx routes /api/* to the API server
+ */
 @Injectable({providedIn:'root'})
 export class ConfigService {
   private http = inject(HttpClient);
@@ -39,15 +49,15 @@ export class ConfigService {
   private configuration: EnvConfig = {};
   private configLoaded = false;
 
-  // defaults
+  // UI state defaults
   private _isApplistListVisible = false;
   private _isApplistFiltersVisible = false;
   private _listPageSize = 10;
-  private _lists = [];
+  private _lists: any[] = [];
   private _lists$ = new ReplaySubject<any>(1);
 
-  // TODO: store these in URL instead
-  private _baseLayerName = 'World Topographic'; // NB: must match a valid base layer name
+  // Map state (TODO: store these in URL instead)
+  private _baseLayerName = 'World Topographic';
   private _mapBounds: any = null;
 
   constructor() {
@@ -56,50 +66,46 @@ export class ConfigService {
 
   /**
    * Initialize the Config Service.
-   * Get configuration from env.js first, then from API if configEndpoint is true.
-   * Pattern follows reserve-rec-public.
+   * 
+   * Flow:
+   * 1. Load env.js values (already set on window.__env before Angular loads)
+   * 2. If configEndpoint=true (deployed), fetch config from /api/config
+   * 3. Load lists from API
    */
   public async init(): Promise<void> {
     const loadingId = 'config-init';
     this.loadingState.startLoading(loadingId, 'Loading configuration');
 
     try {
-      // Start with env.js values (loaded before Angular via script tag in index.html)
-      this.configuration = window.__env || {};
+      // Step 1: Start with env.js values (loaded before Angular via script tag)
+      this.configuration = { ...(window.__env || {}) };
       
       if (this.configuration.logLevel === 0) {
-        console.log('Initial configuration from env.js:', this.configuration);
+        console.log('ConfigService: env.js values:', this.configuration);
       }
 
-      // If configEndpoint is true (deployed environments), fetch config from API
+      // Step 2: If deployed (configEndpoint=true), fetch config from API
       if (this.configuration.configEndpoint === true) {
         try {
           const apiConfig = await this.getConfigFromApi();
-          // Merge API config (API values take precedence)
+          // Merge: API values override env.js values
           this.configuration = { ...this.configuration, ...apiConfig };
+          if (this.configuration.logLevel === 0) {
+            console.log('ConfigService: merged with API config:', this.configuration);
+          }
         } catch (e) {
-          // If API fails, continue with env.js values
-          console.error('Error getting API configuration, using env.js defaults:', e);
+          console.error('ConfigService: API config failed, using env.js defaults:', e);
         }
       }
       
       this.configLoaded = true;
       
-      if (this.configuration.logLevel === 0) {
-        console.log('Final configuration:', this.configuration);
-      }
+      // Step 3: Load lists from API (uses proxy in local, nginx in deployed)
+      await this.loadLists();
       
-      // Now load lists using the configured API path
-      const apiPath = this.getApiPath();
-      const lists = await firstValueFrom(
-        this.http.get<any>(`${apiPath}/search?pageSize=250&dataset=List`)
-      );
-      if (lists && lists[0]) {
-        this._lists = lists[0].searchResults;
-        this._lists$.next(this._lists);
-      }
     } catch (error) {
-      console.error('Error loading configuration:', error);
+      console.error('ConfigService: initialization error:', error);
+      this.configLoaded = true; // Mark as loaded even on error so app can continue
     } finally {
       this.loadingState.stopLoading(loadingId);
     }
@@ -107,42 +113,73 @@ export class ConfigService {
 
   /**
    * Get the API path for making API calls.
-   * Uses API_LOCATION + API_PATH, otherwise falls back to relative /api.
+   * 
+   * LOCAL DEV (configEndpoint=false): Returns full URL (API_LOCATION + API_PATH)
+   * DEPLOYED (configEndpoint=true): Returns relative path (rproxy handles routing)
    */
-  private getApiPath(): string {
-    if (this.configuration.API_LOCATION) {
-      return this.configuration.API_LOCATION + (this.configuration.API_PATH || '');
+  public getApiPath(): string {
+    const apiPath = this.configuration.API_PATH || '/api';
+    
+    // If LOCAL DEV (configEndpoint=false) and API_LOCATION is set, use full URL
+    // This allows local dev to hit remote APIs directly
+    if (this.configuration.configEndpoint === false && this.configuration.API_LOCATION) {
+      return this.configuration.API_LOCATION + apiPath;
     }
-    // Fallback to relative path (for deployed environments with nginx proxy)
-    return '/api';
+    
+    // Deployed: use relative path (rproxy routes /api/* to eagle-api)
+    return apiPath;
+  }
+
+  /**
+   * Load lists from API.
+   * Lists are used for dropdowns/filters throughout the app.
+   */
+  private async loadLists(): Promise<void> {
+    try {
+      const apiPath = this.getApiPath();
+      const response = await firstValueFrom(
+        this.http.get<any>(`${apiPath}/search?pageSize=250&dataset=List`)
+          .pipe(timeout(10000)) // 10 second timeout for lists
+      );
+      if (response && response[0]) {
+        this._lists = response[0].searchResults;
+        this._lists$.next(this._lists);
+      }
+    } catch (error) {
+      console.warn('ConfigService: Failed to load lists:', error);
+      // Continue without lists - they'll be empty but app will work
+      this._lists$.next([]);
+    }
   }
 
   /**
    * Fetch configuration from API endpoint.
-   * Retries with fibonacci backoff if API is unavailable.
+   * Only called when configEndpoint=true (deployed environments).
+   * Retries with fibonacci backoff, times out to prevent blocking.
    */
   private async getConfigFromApi(): Promise<EnvConfig> {
     let n1 = 0;
     let n2 = 1;
     let attempts = 0;
-    const maxAttempts = 5;
+    const maxAttempts = 3;
+    const requestTimeoutMs = 5000; // 5 second timeout per attempt
     
     while (attempts < maxAttempts) {
       try {
         const headers = new HttpHeaders().set('Authorization', 'config');
-        // Use API_LOCATION if set, otherwise relative /api/config (nginx proxies in deployed env)
-        const url = (this.configuration.API_LOCATION || '') + '/api/config';
-        
+        // Always use relative path - nginx routes to API in deployed env
         const response = await firstValueFrom(
-          this.http.get<any>(url, { headers, observe: 'response' })
+          this.http.get<any>('/api/config', { headers, observe: 'response' })
+            .pipe(timeout(requestTimeoutMs))
         );
-        return response.body?.data || response.body;
+        return response.body?.data || response.body || {};
       } catch (err) {
         attempts++;
         if (attempts >= maxAttempts) {
+          console.warn(`ConfigService: API config failed after ${maxAttempts} attempts`);
           throw err;
         }
-        console.log(`Config API attempt ${attempts} failed, retrying...`);
+        console.warn(`ConfigService: API config attempt ${attempts}/${maxAttempts} failed, retrying...`);
         const delay = n1 + n2;
         await this.delay(delay * 1000);
         n1 = n2;
@@ -152,7 +189,7 @@ export class ConfigService {
     throw new Error('Failed to load config from API');
   }
 
-  private async delay(ms: number): Promise<void> {
+  private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 

@@ -27,8 +27,10 @@ COPY . .
 
 # Configure env.js for deployed environment:
 # - configEndpoint=true: App fetches config from /api/config at runtime
+# - API_LOCATION cleared: Forces use of relative paths (nginx handles routing)
 # - All other config (ENVIRONMENT, ANALYTICS_API_URL, etc.) comes from API
-RUN sed -i 's/configEndpoint = false/configEndpoint = true/' src/env.js
+RUN sed -i 's/configEndpoint = false/configEndpoint = true/' src/env.js && \
+    sed -i "s/window.__env.API_LOCATION = .*/window.__env.API_LOCATION = null;/" src/env.js
 
 # Build production bundle
 RUN yarn build
